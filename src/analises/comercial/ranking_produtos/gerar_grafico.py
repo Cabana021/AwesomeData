@@ -5,6 +5,7 @@ from typing import cast
 import matplotlib.pyplot as plt
 import polars as pl
 from loguru import logger
+from matplotlib.ticker import FuncFormatter
 
 
 def formatar_reais(valor: float) -> str:
@@ -107,10 +108,16 @@ def grafico_faturamento_meta_vendedores(
     eixo.set_yticks(posicoes, vendedores["vendedor"].to_list())
     eixo.invert_yaxis()
     eixo.set_xlim(0, max(metas + faturamentos) * 1.25)
-    eixo.set(title=f"Faturamento x meta por vendedor | {periodo}", xlabel="R$")
-    eixo.legend()
+    eixo.set(title="Faturamento x meta por vendedor", xlabel="Valores em R$")
+    eixo.legend(loc="upper left", bbox_to_anchor=(1.01, 1))
     eixo.grid(axis="x", alpha=0.25)
     eixo.set_axisbelow(True)
+    eixo.spines["top"].set_visible(False)
+    eixo.spines["right"].set_visible(False)
+    eixo.xaxis.set_major_formatter(
+        FuncFormatter(lambda valor, _: f"{valor:,.0f}".replace(",", "."))
+    )
+    figura.subplots_adjust(right=0.78)
 
     figura.savefig(caminho, dpi=150, bbox_inches="tight")
     plt.close(figura)
