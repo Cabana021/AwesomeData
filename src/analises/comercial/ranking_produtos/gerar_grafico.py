@@ -123,33 +123,24 @@ def grafico_faturamento_meta_vendedores(
     plt.close(figura)
 
 
-def grafico_faturamento_meta_produtos(
-    produtos: pl.DataFrame, caminho: Path, periodo: str
-) -> None:
-    produtos = produtos.sort("atingimento_meta")
+def grafico_faturamento_meta_produtos(produtos: pl.DataFrame, caminho: Path) -> None:
+    produtos = produtos.sort("atingimento_meta", descending=True)
     percentuais = [valor * 100 for valor in produtos["atingimento_meta"].to_list()]
-    faturamentos = produtos["faturamento_liquido"].to_list()
-    metas = produtos["meta_faturamento_liquido"].to_list()
-    rotulos = [
-        f"{percentual:.1f}%  ({formatar_reais(faturamento)} / {formatar_reais(meta)})"
-        for percentual, faturamento, meta in zip(
-            percentuais, faturamentos, metas, strict=True
-        )
-    ]
+    rotulos = [f"{percentual:.1f}%" for percentual in percentuais]
     cores = [
         "#2A9D8F" if percentual >= 100 else "#D66A5E" for percentual in percentuais
     ]
 
-    figura, eixo = plt.subplots(figsize=(12, 5))
+    figura, eixo = plt.subplots(figsize=(9, 5))
     barras = eixo.barh(produtos["produto"].to_list(), percentuais, color=cores)
     eixo.invert_yaxis()
-    eixo.axvline(100, color="#555555", linestyle="--", label="Meta: 100%")
+    eixo.axvline(100, color="#555555", linestyle="--", alpha=0.5, label="Meta: 100%")
     eixo.bar_label(barras, labels=rotulos, padding=5)
-    eixo.set_xlim(0, max(180, max(percentuais) * 1.6))
-    eixo.set(
-        title=f"Faturamento x meta por produto | {periodo}", xlabel="Meta atingida (%)"
-    )
-    eixo.legend(loc="lower right")
+    eixo.set_xlim(0, max(165, max(percentuais) * 1.45))
+    eixo.set(title="Faturamento x meta por produto", xlabel="Meta atingida (%)")
+    eixo.spines["top"].set_visible(False)
+    eixo.spines["right"].set_visible(False)
+    eixo.legend(loc="upper right")
     eixo.grid(axis="x", alpha=0.25)
     eixo.set_axisbelow(True)
 
@@ -182,7 +173,7 @@ def gerar_graficos() -> None:
         abas["Vendedores"], pasta_graficos / "faturamento_meta_vendedores.png", periodo
     )
     grafico_faturamento_meta_produtos(
-        abas["Produtos"], pasta_graficos / "faturamento_meta_produtos.png", periodo
+        abas["Produtos"], pasta_graficos / "faturamento_meta_produtos.png"
     )
     logger.info("Gráficos criados em {}", pasta_graficos)
 
