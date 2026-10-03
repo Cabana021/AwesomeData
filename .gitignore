@@ -1,0 +1,31 @@
+# Ambiente virtual
+.venv/
+
+# Arquivos compilados e caches do Python
+__pycache__/
+*.py[cod]
+
+# Caches das ferramentas de qualidade
+.mypy_cache/
+.ruff_cache/
+
+# Configurações locais do PyCharm
+.idea/
+
+# Variáveis de ambiente locais
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Dados do projeto
+saidas/
+graficos/
+dados/

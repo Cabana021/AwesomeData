@@ -1,0 +1,19 @@
+[project]
+name = "awesomedata"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "faker>=40.39.0",
+    "fastexcel>=0.21.0",
+    "loguru>=0.7.3",
+    "matplotlib>=3.11.2",
+    "mypy>=2.3.1",
+    "polars>=1.44.2",
+    "pre-commit>=4.6.2",
+    "ruff>=0.16.9",
+    "xlsxwriter>=3.2.9",
+]
+
+[[tool.mypy.overrides]]
+module = ["xlsxwriter", "xlsxwriter.*"]
+follow_untyped_imports = true
