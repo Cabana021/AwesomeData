@@ -22,13 +22,23 @@ def grafico_volume_vendas(vendas: pl.DataFrame, caminho: Path, periodo: str) -> 
 
     figura, eixo = plt.subplots(figsize=(9, 4))
     eixo.plot(datas, quantidades, color="#2563A6", marker="o", linewidth=2)
-    eixo.set(title=f"Volume de vendas por dia | {periodo}", ylabel="Unidades vendidas")
-    eixo.grid(axis="y", alpha=0.25)
+    eixo.set(title="Volume diário de vendas", ylabel="Vendas realizadas")
+    eixo.margins(y=0.2)
+    eixo.spines["top"].set_visible(False)
+    eixo.spines["right"].set_visible(False)
+
+    # Gambiarra manual para organizar o posicionamento dos valores
+    deslocamentos = {
+        "21/09": (0, -14),
+        "22/09": (0, 14),
+        "23/09": (12, 8),
+        "24/09": (0, -14),
+    }
     for data, quantidade in zip(datas, quantidades, strict=True):
         eixo.annotate(
             str(quantidade),
             (data, quantidade),
-            xytext=(0, 8),
+            xytext=deslocamentos.get(data, (0, 8)),
             textcoords="offset points",
             ha="center",
         )
