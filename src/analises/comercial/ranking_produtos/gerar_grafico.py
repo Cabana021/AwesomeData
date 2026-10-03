@@ -63,9 +63,11 @@ def grafico_produtos_mais_vendidos(
     eixo.invert_yaxis()
     eixo.bar_label(barras, padding=4)
     eixo.set_xlim(0, max(quantidades) * 1.15)
-    eixo.set(title=f"Produtos mais vendidos | {periodo}", xlabel="Unidades vendidas")
+    eixo.set(title="Produtos mais vendidos", xlabel="Unidades vendidas")
     eixo.grid(axis="x", alpha=0.25)
     eixo.set_axisbelow(True)
+    eixo.spines["top"].set_visible(False)
+    eixo.spines["right"].set_visible(False)
 
     figura.savefig(caminho, dpi=150, bbox_inches="tight")
     plt.close(figura)
