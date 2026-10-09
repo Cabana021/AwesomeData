@@ -15,7 +15,7 @@ AwesomeData é um projeto de portfólio que simula rotinas operacionais do dia a
 
 - **Linguagem:** Python >= 3.13.
 - **Manipulação e análise de dados:** `polars>=1.44.2`.
-- **Visualização de dados:** `matplotlib>=3.11.2`.
+- **Visualização de dados:** `matplotlib>=3.11.2` e `plotly>=7.1.0`.
 - **Geração de dados:** `faker>=40.39.0`.
 - **Geração de planilhas Excel:** `xlsxwriter>=3.2.9`.
 - **Logs:** `loguru` para registrar eventos e erros durante a execução.
@@ -46,7 +46,8 @@ Referências por categoria:
 - **Linguagem:** [Python](https://docs.python.org/3/tutorial/index.html).
 - **Manipulação e análise de dados:** [Polars — guia](https://docs.pola.rs/) e
   [referência da API Python](https://docs.pola.rs/api/python/stable/reference/index.html).
-- **Visualização de dados:** [Matplotlib](https://matplotlib.org/stable/index.html).
+- **Visualização de dados:** [Matplotlib](https://matplotlib.org/stable/index.html) e
+  [Plotly](https://plotly.com/python/).
 - **Geração de dados:** [Faker](https://faker.readthedocs.io/en/master/).
 - **Geração de planilhas Excel:** [XlsxWriter](https://xlsxwriter.readthedocs.io/).
 - **Logs:** [Loguru](https://loguru.readthedocs.io/en/stable/).
