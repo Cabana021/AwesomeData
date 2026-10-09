@@ -16,5 +16,5 @@ dependencies = [
 ]
 
 [[tool.mypy.overrides]]
-module = ["xlsxwriter", "xlsxwriter.*"]
+module = ["plotly", "plotly.*", "xlsxwriter", "xlsxwriter.*"]
 follow_untyped_imports = true
