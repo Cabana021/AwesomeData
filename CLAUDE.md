@@ -40,6 +40,8 @@ uv run ruff format --check .
 - Use a documentação oficial como fonte principal para APIs e configurações.
 - Confirme a compatibilidade dos exemplos com a versão utilizada no projeto.
 - Consulte a referência em caso de dúvida. Não presuma nomes de métodos, parâmetros ou comportamentos.
+- Para qualquer assunto sobre o Claude Code (skills, hooks, MCP, settings, memória, subagents, CLAUDE.md), consulte
+  obrigatoriamente o MCP `claude-code-docs` antes de responder ou alterar arquivos em `.claude/`. 
 
 Referências por categoria:
 

@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run mypy *)",
+      "Bash(uv run ruff *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "deny": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Read(.env)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff format ."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python .claude/hooks/quality_gates.py"
+          }
+        ]
+      }
+    ]
+  }
+}
