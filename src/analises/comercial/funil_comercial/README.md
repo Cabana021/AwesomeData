@@ -18,7 +18,8 @@ datas em ISO e valores em reais.
 
 - **Período:** negócios criados em 2025 e, em 2026, até 30/09. Volume e conversão comparam jan–set dos dois anos.
   Os criados de out a dez/2025 dão a receita realizada do Q4 de 2025.
-- **Carga inicial:** os criados de out a dez/2024 só dão receita a janeiro de 2025 e ficam fora de volume e conversão.
+- **Carga inicial:** os criados em 2024 formam a base de clientes e dão receita ao início de 2025. Ficam fora de volume
+  e conversão.
 - **Corte:** o que não fechou até 30/09/2026 segue com status Aberto.
 - **Calendário:** todas as datas caem em dias úteis.
 - **Volume:** mensal, com sazonalidade de fim de trimestre. Em 2026, cada mês cresce entre 15% e 35%
@@ -84,12 +85,11 @@ conclusão, calculada a partir dos dados.
 
 | # | Pergunta                            | Gráfico                                                |
 |---|-------------------------------------|--------------------------------------------------------|
-| 1 | Estamos melhor ou pior que 2025?    | Receita mensal e acumulada YtD, 2025 × 2026.           |
-| 2 | O que explica a diferença?          | Variação % de volume, conversão e ticket médio no YtD. |
-| 3 | Em qual etapa a conversão mudou?    | Conversão etapa a etapa, 2025 × 2026.                  |
-| 4 | Quais canais e vendedores mudaram?  | Conversão e receita por canal e por vendedor.          |
-| 5 | Por que perdemos?                   | Motivos de perda, 2025 × 2026.                         |
-| 6 | O que esperar do Q4?                | Pipeline aberto por etapa, bruto e ponderado.          |
+| 1 | O que explica a diferença?          | Variação % de volume, conversão e ticket médio no YtD. |
+| 2 | Em qual etapa a conversão mudou?    | Conversão etapa a etapa, 2025 × 2026.                  |
+| 3 | Quais canais e vendedores mudaram?  | Conversão e receita por canal e por vendedor.          |
+| 4 | Por que perdemos?                   | Motivos de perda, 2025 × 2026.                         |
+| 5 | O que esperar do Q4?                | Pipeline aberto por etapa, bruto e ponderado.          |
 
 ## História esperada
 
@@ -100,7 +100,7 @@ Mais volume, menos eficiência.
 - Evento cresce em volume, converte mal e perde por preço.
 - Indicação converte melhor e tem ticket maior.
 - Um vendedor concentra a piora.
-- A receita cresce no YtD, mas menos que o volume.
+- A receita cai no YtD, mesmo com o volume maior.
 - O pipeline ponderado cobre apenas parte da receita do Q4 de 2025.
 
 ## Como executar

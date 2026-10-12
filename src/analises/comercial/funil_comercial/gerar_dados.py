@@ -10,9 +10,9 @@ from faker import Faker
 from loguru import logger
 
 DATA_CORTE = date(2026, 9, 30)
-# 2025 vai até dezembro para ter a receita realizada do Q4. Out a dez/2024 existe só
-# para que janeiro de 2025 não comece sem negócios em andamento
-MESES_POR_ANO = {2024: range(10, 13), 2025: range(1, 13), 2026: range(1, 10)}
+# 2025 vai até dezembro para ter a receita realizada do Q4. 2024 existe só para que
+# 2025 já comece com base de clientes formada e negócios em andamento
+MESES_POR_ANO = {2024: range(1, 13), 2025: range(1, 13), 2026: range(1, 10)}
 # variação mensal sobre o volume base
 RUIDO_VOLUME = 0.08
 # crescimento de cada mês de 2026 sobre o mesmo mês de 2025 (média perto de 1,25)
