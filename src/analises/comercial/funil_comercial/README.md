@@ -21,7 +21,8 @@ datas em ISO e valores em reais.
 - **Carga inicial:** os criados de out a dez/2024 só dão receita a janeiro de 2025 e ficam fora de volume e conversão.
 - **Corte:** o que não fechou até 30/09/2026 segue com status Aberto.
 - **Calendário:** todas as datas caem em dias úteis.
-- **Volume:** mensal, com sazonalidade de fim de trimestre.
+- **Volume:** mensal, com sazonalidade de fim de trimestre. Em 2026, cada mês cresce entre 15% e 35%
+  sobre o mesmo mês de 2025.
 - **Semente fixa:** a execução é reproduzível.
 
 | Grupo         | Colunas                                                                                                                                    |

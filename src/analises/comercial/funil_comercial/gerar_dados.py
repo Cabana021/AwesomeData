@@ -13,7 +13,10 @@ DATA_CORTE = date(2026, 9, 30)
 # 2025 vai até dezembro para ter a receita realizada do Q4. Out a dez/2024 existe só
 # para que janeiro de 2025 não comece sem negócios em andamento
 MESES_POR_ANO = {2024: range(10, 13), 2025: range(1, 13), 2026: range(1, 10)}
-CRESCIMENTO_VOLUME_2026 = 1.25
+# variação mensal sobre o volume base
+RUIDO_VOLUME = 0.08
+# crescimento de cada mês de 2026 sobre o mesmo mês de 2025 (média perto de 1,25)
+CRESCIMENTO_VOLUME_2026 = (1.15, 1.35)
 
 ETAPAS = ("Lead", "Qualificado", "Proposta", "Negociação")
 
@@ -481,22 +484,30 @@ def gerar_dados() -> Path:
     empresas: list[Empresa] = []
     fantasias_usadas: set[str] = set()
     historicos: dict[str, Historico] = {}
-    # geradores próprios, para IDs e celulares não alterarem o restante dos dados
+    # geradores próprios, para IDs, celulares e volumes não alterarem o restante dos dados
     rng_ids = Random(27)
     rng_contatos = Random(28)
+    rng_volume = Random(29)
     ids_usados: set[int] = set()
 
     # fim de trimestre (mar, jun, set e dez) cria mais negócios
     quantidades = {
         ano: [
-            rng.randint(184, 190) if mes % 3 == 0 else rng.randint(150, 158)
+            round(
+                (
+                    rng_volume.randint(184, 190)
+                    if mes % 3 == 0
+                    else rng_volume.randint(150, 158)
+                )
+                * (1 + rng_volume.uniform(-RUIDO_VOLUME, RUIDO_VOLUME))
+            )
             for mes in meses
         ]
         for ano, meses in MESES_POR_ANO.items()
         if ano < 2026
     }
     quantidades[2026] = [
-        round(q * CRESCIMENTO_VOLUME_2026)
+        round(q * rng_volume.uniform(*CRESCIMENTO_VOLUME_2026))
         for q in quantidades[2025][: len(MESES_POR_ANO[2026])]
     ]
 
