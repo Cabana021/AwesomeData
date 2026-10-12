@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 import plotly.graph_objects as go
@@ -28,8 +29,10 @@ def salvar_html(figura: go.Figure, caminho: Path) -> None:
     caminho.write_text(
         "<!DOCTYPE html><html><head><meta charset='utf-8'></head>"
         "<body style='margin:0;min-height:100vh;display:flex;"
-        "justify-content:center;align-items:center'>"
-        f"{figura.to_html(full_html=False)}</body></html>",
+        "justify-content:center;align-items:center;background:#F4F5F7'>"
+        "<div style='background:#FFFFFF;padding:24px;border-radius:12px;"
+        "border:1px solid #E3E5E8;box-shadow:0 2px 8px rgba(0,0,0,0.06)'>"
+        f"{figura.to_html(full_html=False)}</div></body></html>",
         encoding="utf-8",
     )
 
@@ -275,6 +278,154 @@ def grafico_indicadores_ytd(indicadores: pl.DataFrame, caminho: Path) -> None:
     salvar_html(figura, caminho)
 
 
+def grafico_ponte_receita(indicadores: pl.DataFrame, caminho: Path) -> None:
+    final_2025, final_2026 = (
+        indicadores.filter(pl.col("mes") == ULTIMO_MES).sort("ano").rows(named=True)
+    )
+    receita_2025, receita_2026 = final_2025["receita"], final_2026["receita"]
+    diferenca = receita_2026 - receita_2025
+    fatores = {
+        "Volume": ("criados", "o"),
+        "Conversão": ("conversao", "a"),
+        "Ticket médio": ("ticket_mil", "o"),
+    }
+    efeitos = {
+        nome: diferenca
+        * math.log(final_2026[coluna] / final_2025[coluna])
+        / math.log(receita_2026 / receita_2025)
+        for nome, (coluna, _) in fatores.items()
+    }
+
+    piso = math.floor(0.8 * min(receita_2025, receita_2026) / 1e6) * 1e6
+    inicios = [piso, receita_2025]
+    for efeito in list(efeitos.values())[:-1]:
+        inicios.append(inicios[-1] + efeito)
+    inicios.append(piso)
+    alturas = [receita_2025 - piso, *efeitos.values(), receita_2026 - piso]
+    cores = [
+        COR_2025,
+        *(COR_DESTAQUE if e >= 0 else COR_QUEDA for e in efeitos.values()),
+        COR_2026,
+    ]
+    variacoes = {
+        nome: final_2026[coluna] / final_2025[coluna] - 1
+        for nome, (coluna, _) in fatores.items()
+    }
+    categorias = [
+        "Receita 2025<br>jan–set",
+        *(
+            f"{nome}<br>{destacar(f'{var:+.0%}', var)}"
+            f"{' oportunidades' if nome == 'Volume' else ''}"
+            for nome, var in variacoes.items()
+        ),
+        "Receita 2026<br>jan–set",
+    ]
+
+    figura = go.Figure(
+        go.Bar(
+            x=categorias,
+            y=[a / 1e6 for a in alturas],
+            base=[i / 1e6 for i in inicios],
+            width=0.5,
+            marker_color=cores,
+            text=[
+                formatar_milhoes(receita_2025),
+                *(
+                    f"{'+' if e >= 0 else '-'}{formatar_milhoes(abs(e))}"
+                    for e in efeitos.values()
+                ),
+                formatar_milhoes(receita_2026),
+            ],
+            textposition="outside",
+            textfont={
+                "size": 14,
+                "color": [COR_SUBTITULO, *cores[1:-1], COR_SUBTITULO],
+            },
+            cliponaxis=False,
+            hovertext=["Receita 2025", *efeitos, "Receita 2026"],
+            hovertemplate="<b>%{hovertext}</b><br>%{text}<extra></extra>",
+        )
+    )
+    # Conectores pontilhados entre o fim de uma barra e o início da seguinte
+    for posicao, nivel in enumerate(i + a for i, a in zip(inicios, alturas)):
+        if posicao < len(alturas) - 1:
+            figura.add_shape(
+                type="line",
+                x0=posicao + 0.25,
+                x1=posicao + 0.75,
+                y0=nivel / 1e6,
+                y1=nivel / 1e6,
+                line={"color": COR_2025, "dash": "dot", "width": 1},
+            )
+
+    ganhos = [nome.lower() for nome, efeito in efeitos.items() if efeito >= 0]
+    perdas = [nome.lower() for nome, efeito in efeitos.items() if efeito < 0]
+    titulo = (
+        f"Receita YTD {diferenca / receita_2025:+.0%}: {' e '.join(ganhos)} "
+        f"{'sobe' if len(ganhos) == 1 else 'sobem'}, mas {' e '.join(perdas)} "
+        f"{'cai' if len(perdas) == 1 else 'caem'} {'mais' if diferenca < 0 else 'menos'}"
+    )
+    # E se o fator que mais tirou receita voltasse ao nível de 2025?
+    maior_perda = min(efeitos, key=lambda nome: efeitos[nome])
+    coluna, artigo = fatores[maior_perda]
+    receita_simulada = receita_2026 * final_2025[coluna] / final_2026[coluna]
+    var_simulada = receita_simulada / receita_2025 - 1
+    subtitulo = (
+        f"Recuperar {artigo} {maior_perda.lower()} de 2025 levaria a receita a "
+        f"{destacar(f'{var_simulada:+.0%}', var_simulada)} sobre 2025."
+    )
+    if efeitos["Volume"] >= 0 and diferenca < 0:
+        subtitulo += " O problema não é demanda, é venda."
+    # Contorno tracejado sobre a receita 2026 até a receita simulada
+    figura.add_shape(
+        type="rect",
+        x0=len(alturas) - 1.25,
+        x1=len(alturas) - 0.75,
+        y0=receita_2026 / 1e6,
+        y1=receita_simulada / 1e6,
+        line={"color": COR_2026, "dash": "dash", "width": 1.5},
+    )
+    figura.add_annotation(
+        x=len(alturas) - 1,
+        y=receita_simulada / 1e6,
+        text=f"Com {artigo} {maior_perda.lower()} de 2025:<br>"
+        f"<b>{formatar_milhoes(receita_simulada)}</b>",
+        showarrow=False,
+        yanchor="bottom",
+        yshift=4,
+        font={"size": 13, "color": COR_2026},
+    )
+    niveis = [i + a for i, a in zip(inicios, alturas)]
+    teto = max(*niveis, receita_simulada) * 1.06
+
+    figura.update_layout(
+        title={
+            "text": f"<b>{titulo}</b><br><span style='font-size:14px;"
+            f"color:{COR_SUBTITULO}'>{subtitulo}</span>",
+            "font": {"size": 22, "color": "#000000"},
+            "xref": "paper",
+            "x": 0,
+            "xanchor": "left",
+            "y": 0.96,
+            "yanchor": "top",
+        },
+        showlegend=False,
+        separators=",.",
+        template="plotly_white",
+        width=1100,
+        height=540,
+        margin={"t": 75, "l": 40, "r": 40, "b": 60},
+    )
+    figura.update_xaxes(
+        tickfont={"size": 13, "color": COR_SUBTITULO},
+        showline=True,
+        linecolor=COR_2025,
+        linewidth=1,
+    )
+    figura.update_yaxes(visible=False, range=[piso / 1e6, teto / 1e6])
+    salvar_html(figura, caminho)
+
+
 def gerar_graficos() -> None:
     pasta_base = Path(__file__).resolve().parent
     caminho_dados = pasta_base / "dados" / "negocios.csv"
@@ -288,9 +439,9 @@ def gerar_graficos() -> None:
     pasta_graficos.mkdir(exist_ok=True)
 
     grafico_receita_ytd(receita_ytd(negocios), pasta_graficos / "receita_ytd.html")
-    grafico_indicadores_ytd(
-        indicadores_ytd(negocios), pasta_graficos / "indicadores_ytd.html"
-    )
+    indicadores = indicadores_ytd(negocios)
+    grafico_indicadores_ytd(indicadores, pasta_graficos / "indicadores_ytd.html")
+    grafico_ponte_receita(indicadores, pasta_graficos / "ponte_receita_ytd.html")
     logger.info("Gráficos criados em {}", pasta_graficos)
 
 
