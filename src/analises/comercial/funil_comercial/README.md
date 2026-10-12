@@ -30,7 +30,7 @@ datas em ISO e valores em reais.
 | Contato       | `nome_contato`, `cargo_contato` (Sócio, Diretor, Gerente, Analista), `email_contato`, `celular_contato`                                    |
 | Empresa       | `segmento`, `porte`, `uf`                                                                                                                  |
 | Classificação | `tipo_negocio` (Novo, Expansão, Reativação), `plano` (Starter, Pro, Enterprise)                                                            |
-| Origem        | `canal_origem` (Indicação, Site, Mídia paga, Evento, Outbound), `campanha_origem`                                                          |
+| Origem        | `canal_origem` (Indicação, Site, Mídia paga, Evento, Outbound, Base de clientes), `campanha_origem`                                        |
 | Responsáveis  | `sdr`, `vendedor`                                                                                                                          |
 | Situação      | `etapa_atual`, `status` (Aberto, Ganho, Perdido)                                                                                           |
 | Valores       | `valor_estimado`, `desconto_percentual`, `valor_fechado`                                                                                   |
@@ -46,6 +46,9 @@ Regras dos dados:
 - `etapa_atual` traz a última etapa atingida, inclusive nos fechados.
 - `tipo_negocio` segue o histórico da empresa: Novo cria a empresa, Expansão vem de empresa com ganho anterior e
   Reativação, de empresa cujo último negócio foi perdido há algum tempo. Empresa com negócio em curso não recebe outro.
+- A Expansão acontece 30 dias ou mais após o último ganho, sempre em plano acima do ganho e no canal Base de clientes.
+  Empresa em Enterprise, ou no maior plano do seu porte, não recebe Expansão.
+- Cada empresa mantém o mesmo `vendedor` em todos os negócios.
 - Cada empresa tem um contato fixo. O e-mail usa o domínio da empresa, o celular traz o DDD da `uf` e o cargo tende a
   Sócio nos portes menores.
 - `foi_contatado` é falso apenas para o negócio que ficou em Lead e sem reunião.

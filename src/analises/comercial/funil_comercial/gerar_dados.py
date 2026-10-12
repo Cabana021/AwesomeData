@@ -18,10 +18,10 @@ CRESCIMENTO_VOLUME_2026 = 1.25
 ETAPAS = ("Lead", "Qualificado", "Proposta", "Negociação")
 
 # probabilidade de avançar de uma etapa para a seguinte
-P_LEAD_QUALIFICADO = 0.55
-P_QUALIFICADO_PROPOSTA = 0.65
-P_PROPOSTA_NEGOCIACAO = 0.73
-P_NEGOCIACAO_GANHO = 0.88
+PROBABILIDADE_LEAD_QUALIFICADO = 0.55
+PROBABILIDADE_QUALIFICADO_PROPOSTA = 0.65
+PROBABILIDADE_PROPOSTA_NEGOCIACAO = 0.73
+PROBABILIDADE_NEGOCIACAO_GANHO = 0.88
 
 # prazo em dias (mínimo, máximo) entre as etapas e até o fechamento
 PRAZOS_ETAPA = ((2, 8), (3, 10), (5, 14))
@@ -37,6 +37,8 @@ CANAIS = (
     ("Outbound", 0.9, 1.0, ("Cadência outbound",)),
 )
 PESOS_CANAIS = {2025: (20, 25, 20, 10, 25), 2026: (18, 22, 18, 20, 22)}
+# Expansão vem da base de clientes e não entra no sorteio de canais
+CANAL_EXPANSAO = ("Base de clientes", 1.0, 1.0, ("Upgrade de plano",))
 
 # plano, valor estimado mínimo e máximo
 PLANOS = (
@@ -44,6 +46,7 @@ PLANOS = (
     ("Pro", 22_000, 36_000),
     ("Enterprise", 70_000, 110_000),
 )
+NOMES_PLANOS = tuple(nome for nome, _, _ in PLANOS)
 PESOS_PLANOS = (55, 35, 10)
 # porte Micro não contrata Enterprise
 QTD_PLANOS_MICRO = 2
@@ -52,6 +55,8 @@ TIPOS_NEGOCIO = ("Novo", "Expansão", "Reativação")
 PESOS_TIPOS_NEGOCIO = (60, 30, 10)
 # Reativação: empresa cujo último negócio foi perdido há pelo menos esse prazo
 DIAS_REATIVACAO = 90
+# Expansão: empresa cujo último ganho ocorreu há pelo menos esse prazo
+DIAS_MINIMOS_EXPANSAO = 30
 
 SEGMENTOS = ("Varejo", "Indústria", "Serviços", "Saúde", "Educação", "Logística")
 FATOR_PORTE = {"Micro": 0.8, "Pequena": 1.0, "Média": 1.3}
@@ -121,6 +126,16 @@ class Empresa(NamedTuple):
     cargo: str
 
 
+class Historico(NamedTuple):
+    vendedor: str
+    # do último negócio da empresa
+    status: str
+    fechamento: date | None
+    # índice em PLANOS e data do último ganho; -1 e None enquanto não há ganho
+    plano_ganho: int
+    data_ganho: date | None
+
+
 def nome_pessoa(fake: Faker) -> str:
     return f"{fake.first_name()} {fake.last_name()}"
 
@@ -178,11 +193,14 @@ def criar_empresa(
     return Empresa(nome, segmento, porte, uf, contato, email, celular, cargo)
 
 
+def qtd_planos(empresa: Empresa) -> int:
+    return QTD_PLANOS_MICRO if empresa.porte == "Micro" else len(PLANOS)
+
+
 def empresas_elegiveis(
     tipo_negocio: str,
     empresas: list[Empresa],
-    ultimo_negocio: dict[str, tuple[str, date | None]],
-    clientes: set[str],
+    historicos: dict[str, Historico],
     dia: date,
 ) -> list[Empresa]:
     if tipo_negocio == "Novo":
@@ -190,15 +208,21 @@ def empresas_elegiveis(
 
     elegiveis = []
     for empresa in empresas:
-        status, fechamento = ultimo_negocio[empresa.nome]
+        historico = historicos[empresa.nome]
         # empresa com negócio em curso não recebe outro
-        if fechamento is None or fechamento >= dia:
+        if historico.fechamento is None or historico.fechamento >= dia:
             continue
         if tipo_negocio == "Expansão":
-            elegivel = empresa.nome in clientes
+            # só sobe de plano: Enterprise e o maior plano do porte não recebem Expansão
+            elegivel = (
+                historico.data_ganho is not None
+                and historico.data_ganho <= dia - timedelta(days=DIAS_MINIMOS_EXPANSAO)
+                and historico.plano_ganho < qtd_planos(empresa) - 1
+            )
         else:
-            elegivel = status == "Perdido" and fechamento <= dia - timedelta(
-                days=DIAS_REATIVACAO
+            elegivel = (
+                historico.status == "Perdido"
+                and historico.fechamento <= dia - timedelta(days=DIAS_REATIVACAO)
             )
         if elegivel:
             elegiveis.append(empresa)
@@ -219,32 +243,39 @@ def simular_negocio(
     tipo_negocio: str,
     sdrs: list[str],
     vendedores: list[str],
+    historico: Historico | None,
 ) -> dict[str, Any]:
     rng = fake.random
 
-    canal, fator_conversao, fator_ticket, campanhas = rng.choices(
-        CANAIS, weights=PESOS_CANAIS[ano]
-    )[0]
-    qtd_planos = QTD_PLANOS_MICRO if empresa.porte == "Micro" else len(PLANOS)
+    if tipo_negocio == "Expansão":
+        canal, fator_conversao, fator_ticket, campanhas = CANAL_EXPANSAO
+    else:
+        canal, fator_conversao, fator_ticket, campanhas = rng.choices(
+            CANAIS, weights=PESOS_CANAIS[ano]
+        )[0]
+    # Expansão contrata plano acima do último ganho
+    primeiro_plano = 0
+    if historico and tipo_negocio == "Expansão":
+        primeiro_plano = historico.plano_ganho + 1
+    ultimo_plano = qtd_planos(empresa)
     plano, valor_minimo, valor_maximo = rng.choices(
-        PLANOS[:qtd_planos], weights=PESOS_PLANOS[:qtd_planos]
+        PLANOS[primeiro_plano:ultimo_plano],
+        weights=PESOS_PLANOS[primeiro_plano:ultimo_plano],
     )[0]
-    vendedor = rng.choice(vendedores)
+    # a empresa mantém o vendedor do primeiro negócio
+    vendedor = historico.vendedor if historico else rng.choice(vendedores)
 
     fator_vendedor = 1.0
     if ano == 2026 and vendedor == vendedores[INDICE_VENDEDOR_EM_QUEDA]:
         fator_vendedor = FATOR_VENDEDOR_EM_QUEDA
-    p_proposta_negociacao = min(
-        0.95, P_PROPOSTA_NEGOCIACAO * fator_conversao * fator_vendedor
-    )
 
     # etapa_final: quantas transições o negócio concluiu (4 = ganho)
     etapa_final = 0
     for probabilidade in (
-        P_LEAD_QUALIFICADO,
-        P_QUALIFICADO_PROPOSTA,
-        p_proposta_negociacao,
-        P_NEGOCIACAO_GANHO,
+        PROBABILIDADE_LEAD_QUALIFICADO,
+        PROBABILIDADE_QUALIFICADO_PROPOSTA,
+        min(0.95, PROBABILIDADE_PROPOSTA_NEGOCIACAO * fator_conversao * fator_vendedor),
+        PROBABILIDADE_NEGOCIACAO_GANHO,
     ):
         if rng.random() >= probabilidade:
             break
@@ -361,8 +392,7 @@ def gerar_dados() -> Path:
     # as empresas nascem no primeiro negócio Novo; o histórico define o tipo dos seguintes
     empresas: list[Empresa] = []
     nomes_usados: set[str] = set()
-    ultimo_negocio: dict[str, tuple[str, date | None]] = {}
-    clientes: set[str] = set()
+    historicos: dict[str, Historico] = {}
     dominios_usados: set[str] = set()
     # geradores próprios, para IDs e celulares não alterarem o restante dos dados
     rng_ids = Random(27)
@@ -397,9 +427,7 @@ def gerar_dados() -> Path:
                 tipo_negocio = rng.choices(TIPOS_NEGOCIO, weights=PESOS_TIPOS_NEGOCIO)[
                     0
                 ]
-                elegiveis = empresas_elegiveis(
-                    tipo_negocio, empresas, ultimo_negocio, clientes, dia
-                )
+                elegiveis = empresas_elegiveis(tipo_negocio, empresas, historicos, dia)
                 if elegiveis:
                     empresa = rng.choice(elegiveis)
                 else:
@@ -410,15 +438,29 @@ def gerar_dados() -> Path:
                     )
                     empresas.append(empresa)
                 # 2024 segue as regras de 2025
+                anterior = historicos.get(empresa.nome)
                 negocio = simular_negocio(
-                    fake, max(ano, 2025), dia, empresa, tipo_negocio, sdrs, vendedores
+                    fake,
+                    max(ano, 2025),
+                    dia,
+                    empresa,
+                    tipo_negocio,
+                    sdrs,
+                    vendedores,
+                    anterior,
                 )
-                ultimo_negocio[empresa.nome] = (
+                plano_ganho = anterior.plano_ganho if anterior else -1
+                data_ganho = anterior.data_ganho if anterior else None
+                if negocio["status"] == "Ganho":
+                    plano_ganho = NOMES_PLANOS.index(negocio["plano"])
+                    data_ganho = negocio["data_fechamento"]
+                historicos[empresa.nome] = Historico(
+                    negocio["vendedor"],
                     negocio["status"],
                     negocio["data_fechamento"],
+                    plano_ganho,
+                    data_ganho,
                 )
-                if negocio["status"] == "Ganho":
-                    clientes.add(empresa.nome)
                 negocios.append({"id": gerar_id(rng_ids, ids_usados), **negocio})
 
     negocios.sort(key=lambda negocio: str(negocio["data_criacao"]))
