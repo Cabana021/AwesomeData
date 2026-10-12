@@ -46,8 +46,10 @@ Regras dos dados:
 - **Tipo de negócio:** Novo cria a empresa. Expansão vem de empresa com ganho há 30 dias ou mais, em plano acima do
   ganho e no canal Base de clientes, então Enterprise e o maior plano do porte não recebem Expansão. Reativação vem de
   empresa cujo último negócio foi perdido há 90 dias ou mais. Empresa com negócio em curso não recebe outro.
-- **Empresa:** o porte Micro não contrata Enterprise. O contato é fixo, com e-mail no domínio da empresa, celular com o
-  DDD da `uf` e cargo que tende a Sócio nos portes menores.
+- **Empresa:** o porte Micro não contrata Enterprise. O nome-fantasia é único, com dois sobrenomes. ME e EI só aparecem
+  em Varejo, Serviços e Logística, e S/A só no porte Média. O contato é fixo, com e-mail no domínio da empresa (nas
+  Micro, parte usa provedor gratuito), celular com o DDD da `uf` e cargo que tende a Sócio nos portes menores.
+- **Valores:** `valor_estimado` e `valor_fechado` são o valor anual do contrato (primeiro ano), em reais.
 - **Vendedor:** entra a partir de Qualificado, e a empresa o mantém em todos os negócios seguintes.
 - **Contato e reunião:** o Lead não tem reunião (`qtd_reunioes` 0, status "Sem reunião"). De Qualificado em diante há
   contato e ao menos uma reunião Realizada. A chance de contato do Lead varia por canal: alta em Indicação e Outbound,

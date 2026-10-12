@@ -61,7 +61,9 @@ DIAS_MINIMOS_EXPANSAO = 30
 
 SEGMENTOS = ("Varejo", "Indústria", "Serviços", "Saúde", "Educação", "Logística")
 FATOR_PORTE = {"Micro": 0.8, "Pequena": 1.0, "Média": 1.3}
+PESOS_PORTES = (40, 40, 20)
 UFS = ("SP", "RJ", "MG", "PR", "RS", "SC", "BA", "GO")
+PESOS_UFS = (35, 14, 15, 11, 9, 8, 5, 3)
 DDDS = {"SP": 11, "RJ": 21, "MG": 31, "PR": 41, "RS": 51, "SC": 48, "BA": 71, "GO": 62}
 CARGOS = ("Sócio", "Diretor", "Gerente", "Analista")
 PESOS_CARGOS = {
@@ -77,11 +79,15 @@ FORMATOS_EMPRESA = {
     "Educação": ("Colégio {}", "Escola {}", "Instituto {}"),
     "Logística": ("Transportes {}", "{} Logística", "{} Transportes"),
 }
-SUFIXOS_PORTE = {
-    "Micro": ("ME", "EI"),
-    "Pequena": ("Ltda.",),
-    "Média": ("Ltda.", "S/A"),
-}
+# ME e EI só em segmentos de pequeno negócio; os demais portes Micro abrem como Ltda.
+SEGMENTOS_ME_EI = ("Varejo", "Serviços", "Logística")
+SUFIXOS_ME_EI = ("ME", "EI")
+# Média é quase sempre Ltda., e S/A é raro
+SUFIXOS_MEDIA = ("Ltda.", "S/A")
+PESOS_SUFIXOS_MEDIA = (90, 10)
+# parte das Micro usa e-mail de provedor gratuito no lugar do domínio da empresa
+PROBABILIDADE_EMAIL_GRATUITO = 0.3
+DOMINIOS_GRATUITOS = ("gmail.com", "outlook.com", "hotmail.com", "yahoo.com.br")
 
 QTD_SDRS = 3
 QTD_VENDEDORES = 6
@@ -158,42 +164,51 @@ def gerar_id(rng_ids: Random, ids_usados: set[int]) -> int:
     return id_novo
 
 
+def sufixo_empresa(rng: Random, segmento: str, porte: str) -> str:
+    if porte == "Micro":
+        return rng.choice(SUFIXOS_ME_EI) if segmento in SEGMENTOS_ME_EI else "Ltda."
+    if porte == "Média":
+        return rng.choices(SUFIXOS_MEDIA, weights=PESOS_SUFIXOS_MEDIA)[0]
+    return "Ltda."
+
+
 def criar_empresa(
     fake: Faker,
     rng_contatos: Random,
-    nomes_usados: set[str],
-    dominios_usados: set[str],
+    fantasias_usadas: set[str],
 ) -> Empresa:
     rng = fake.random
     segmento = rng.choice(SEGMENTOS)
-    porte = rng.choice(tuple(FATOR_PORTE))
-    nome = ""
-    while not nome or nome in nomes_usados:
+    porte = rng.choices(tuple(FATOR_PORTE), weights=PESOS_PORTES)[0]
+    # dois sobrenomes distintos, com nome-fantasia único, dão domínio único
+    nome_fantasia = ""
+    while not nome_fantasia or nome_fantasia in fantasias_usadas:
+        sobrenome_1, sobrenome_2 = fake.last_name(), fake.last_name()
+        if sobrenome_1 == sobrenome_2:
+            continue
         formato = rng.choice(FORMATOS_EMPRESA[segmento])
-        sufixo = rng.choice(SUFIXOS_PORTE[porte])
-        nome_fantasia = formato.format(fake.last_name())
-        nome = f"{nome_fantasia} {sufixo}"
-    nomes_usados.add(nome)
-    uf = rng.choice(UFS)
+        nome_fantasia = formato.format(f"{sobrenome_1} & {sobrenome_2}")
+    fantasias_usadas.add(nome_fantasia)
+    nome = f"{nome_fantasia} {sufixo_empresa(rng, segmento, porte)}"
+    uf = rng.choices(UFS, weights=PESOS_UFS)[0]
     contato = nome_pessoa(fake)
 
-    # nomes-fantasia iguais em empresas diferentes ganham UF e número no domínio
-    dominio = slug(nome_fantasia)
-    if dominio in dominios_usados:
-        dominio += uf.lower()
-    dominio_base, sequencia = dominio, 2
-    while dominio in dominios_usados:
-        dominio = f"{dominio_base}{sequencia}"
-        sequencia += 1
-    dominios_usados.add(dominio)
-
-    primeiro_nome, *_, sobrenome = contato.split()
-    email = f"{slug(primeiro_nome)}.{slug(sobrenome)}@{dominio}.com.br"
     celular = (
         f"({DDDS[uf]}) 9{rng_contatos.randint(6000, 9999)}-"
         f"{rng_contatos.randint(0, 9999):04d}"
     )
     cargo = rng_contatos.choices(CARGOS, weights=PESOS_CARGOS[porte])[0]
+
+    primeiro_nome, *_, sobrenome = contato.split()
+    usuario = f"{slug(primeiro_nome)}.{slug(sobrenome)}"
+    if porte == "Micro" and rng_contatos.random() < PROBABILIDADE_EMAIL_GRATUITO:
+        # o número evita o mesmo e-mail em empresas diferentes
+        email = (
+            f"{usuario}{rng_contatos.randint(10, 99)}"
+            f"@{rng_contatos.choice(DOMINIOS_GRATUITOS)}"
+        )
+    else:
+        email = f"{usuario}@{slug(nome_fantasia)}.com.br"
     return Empresa(nome, segmento, porte, uf, contato, email, celular, cargo)
 
 
@@ -403,9 +418,8 @@ def gerar_dados() -> Path:
     vendedores = [nome_pessoa(fake) for _ in range(QTD_VENDEDORES)]
     # as empresas nascem no primeiro negócio Novo; o histórico define o tipo dos seguintes
     empresas: list[Empresa] = []
-    nomes_usados: set[str] = set()
+    fantasias_usadas: set[str] = set()
     historicos: dict[str, Historico] = {}
-    dominios_usados: set[str] = set()
     # geradores próprios, para IDs e celulares não alterarem o restante dos dados
     rng_ids = Random(27)
     rng_contatos = Random(28)
@@ -445,9 +459,7 @@ def gerar_dados() -> Path:
                 else:
                     # sem empresa elegível, o negócio abre uma empresa nova
                     tipo_negocio = "Novo"
-                    empresa = criar_empresa(
-                        fake, rng_contatos, nomes_usados, dominios_usados
-                    )
+                    empresa = criar_empresa(fake, rng_contatos, fantasias_usadas)
                     empresas.append(empresa)
                 # 2024 segue as regras de 2025
                 anterior = historicos.get(empresa.nome)
