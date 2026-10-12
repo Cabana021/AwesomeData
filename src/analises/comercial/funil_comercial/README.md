@@ -40,20 +40,20 @@ datas em ISO e valores em reais.
 
 Regras dos dados:
 
-- Campos ficam vazios apenas quando não se aplicam: datas de etapas não atingidas, `desconto_percentual` antes de
-  Proposta, `valor_fechado` fora dos ganhos e `motivo_perda` fora dos perdidos.
-- `id` é único e não sequencial. A empresa é identificada pelo nome.
-- `etapa_atual` traz a última etapa atingida, inclusive nos fechados.
-- `tipo_negocio` segue o histórico da empresa: Novo cria a empresa, Expansão vem de empresa com ganho anterior e
-  Reativação, de empresa cujo último negócio foi perdido há algum tempo. Empresa com negócio em curso não recebe outro.
-- A Expansão acontece 30 dias ou mais após o último ganho, sempre em plano acima do ganho e no canal Base de clientes.
-  Empresa em Enterprise, ou no maior plano do seu porte, não recebe Expansão.
-- Cada empresa mantém o mesmo `vendedor` em todos os negócios.
-- Cada empresa tem um contato fixo. O e-mail usa o domínio da empresa, o celular traz o DDD da `uf` e o cargo tende a
-  Sócio nos portes menores.
-- `foi_contatado` é falso apenas para o negócio que ficou em Lead e sem reunião.
-- Preço e Concorrente só aparecem como `motivo_perda` de Qualificado em diante.
-- O porte Micro não contrata o plano Enterprise.
+- **Vazios:** só onde não se aplicam: datas de etapas não atingidas, `desconto_percentual` antes de Proposta,
+  `valor_fechado` fora dos ganhos, `motivo_perda` fora dos perdidos e `vendedor` no Lead de empresa sem vendedor ainda.
+- **Etapa:** `etapa_atual` é a última etapa atingida, inclusive nos fechados.
+- **Tipo de negócio:** Novo cria a empresa. Expansão vem de empresa com ganho há 30 dias ou mais, em plano acima do
+  ganho e no canal Base de clientes, então Enterprise e o maior plano do porte não recebem Expansão. Reativação vem de
+  empresa cujo último negócio foi perdido há 90 dias ou mais. Empresa com negócio em curso não recebe outro.
+- **Empresa:** o porte Micro não contrata Enterprise. O contato é fixo, com e-mail no domínio da empresa, celular com o
+  DDD da `uf` e cargo que tende a Sócio nos portes menores.
+- **Vendedor:** entra a partir de Qualificado, e a empresa o mantém em todos os negócios seguintes.
+- **Contato e reunião:** o Lead não tem reunião (`qtd_reunioes` 0, status "Sem reunião"). De Qualificado em diante há
+  contato e ao menos uma reunião Realizada. A chance de contato do Lead varia por canal: alta em Indicação e Outbound,
+  baixa em Mídia paga e Evento.
+- **Motivo de perda:** Lead sem contato perde só por Fora do perfil. Lead contatado perde por Sem orçamento, Sem retorno
+  ou Timing. Preço e Concorrente só aparecem de Qualificado em diante.
 
 ## Métricas
 

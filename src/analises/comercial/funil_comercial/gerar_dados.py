@@ -28,17 +28,18 @@ PRAZOS_ETAPA = ((2, 8), (3, 10), (5, 14))
 PRAZO_GANHO = (5, 18)
 PRAZO_PERDA = (2, 10)
 
-# canal, fator de conversão em Proposta → Negociação, fator de ticket, campanhas
+# canal, fator de conversão em Proposta → Negociação, fator de ticket, probabilidade de
+# o Lead já ter sido contatado (de Qualificado em diante é sempre), campanhas
 CANAIS = (
-    ("Indicação", 1.3, 1.3, ("Programa de indicação",)),
-    ("Site", 0.95, 1.0, ("Blog", "Newsletter", "Teste grátis")),
-    ("Mídia paga", 0.9, 1.0, ("Google Ads", "LinkedIn Ads", "Meta Ads")),
-    ("Evento", 0.9, 0.9, ("Feira Gestão PME", "Congresso de Varejo", "Webinar")),
-    ("Outbound", 0.9, 1.0, ("Cadência outbound",)),
+    ("Indicação", 1.3, 1.3, 0.95, ("Programa de indicação",)),
+    ("Site", 0.95, 1.0, 0.75, ("Blog", "Newsletter", "Teste grátis")),
+    ("Mídia paga", 0.9, 1.0, 0.65, ("Google Ads", "LinkedIn Ads", "Meta Ads")),
+    ("Evento", 0.9, 0.9, 0.7, ("Feira Gestão PME", "Congresso de Varejo", "Webinar")),
+    ("Outbound", 0.9, 1.0, 0.95, ("Cadência outbound",)),
 )
 PESOS_CANAIS = {2025: (20, 25, 20, 10, 25), 2026: (18, 22, 18, 20, 22)}
 # Expansão vem da base de clientes e não entra no sorteio de canais
-CANAL_EXPANSAO = ("Base de clientes", 1.0, 1.0, ("Upgrade de plano",))
+CANAL_EXPANSAO = ("Base de clientes", 1.0, 1.0, 0.9, ("Upgrade de plano",))
 
 # plano, valor estimado mínimo e máximo
 PLANOS = (
@@ -99,14 +100,16 @@ MOTIVOS_PERDA = (
     "Fora do perfil",
     "Timing",
 )
-# negócio perdido ainda como Lead não chegou a falar de preço nem de concorrente
-PESOS_MOTIVOS_LEAD = (0, 0, 15, 45, 25, 15)
+# Lead perdido sem contato só pode ser fora do perfil
+PESOS_MOTIVOS_SEM_CONTATO = (0, 0, 0, 0, 1, 0)
+# Lead perdido com contato não chegou a falar de preço nem de concorrente
+PESOS_MOTIVOS_LEAD = (0, 0, 15, 45, 0, 15)
 # perdido de Qualificado em diante
 PESOS_MOTIVOS = {2025: (22, 25, 15, 18, 5, 15), 2026: (32, 25, 12, 14, 4, 13)}
 PESOS_MOTIVOS_EVENTO = (65, 10, 8, 7, 0, 10)
 
-# mínimo e máximo de reuniões por etapa atingida
-REUNIOES_ETAPA = ((0, 1), (1, 2), (2, 4), (3, 5))
+# mínimo e máximo de reuniões por etapa atingida; o Lead não tem reunião
+REUNIOES_ETAPA = ((0, 0), (1, 2), (2, 4), (3, 5))
 STATUS_REUNIAO = ("Realizada", "Agendada", "Não compareceu")
 PESOS_STATUS_REUNIAO = {
     "Ganho": (100, 0, 0),
@@ -127,7 +130,8 @@ class Empresa(NamedTuple):
 
 
 class Historico(NamedTuple):
-    vendedor: str
+    # None enquanto a empresa só teve Leads
+    vendedor: str | None
     # do último negócio da empresa
     status: str
     fechamento: date | None
@@ -248,9 +252,9 @@ def simular_negocio(
     rng = fake.random
 
     if tipo_negocio == "Expansão":
-        canal, fator_conversao, fator_ticket, campanhas = CANAL_EXPANSAO
+        canal, fator_conversao, fator_ticket, prob_contato, campanhas = CANAL_EXPANSAO
     else:
-        canal, fator_conversao, fator_ticket, campanhas = rng.choices(
+        canal, fator_conversao, fator_ticket, prob_contato, campanhas = rng.choices(
             CANAIS, weights=PESOS_CANAIS[ano]
         )[0]
     # Expansão contrata plano acima do último ganho
@@ -262,8 +266,9 @@ def simular_negocio(
         PLANOS[primeiro_plano:ultimo_plano],
         weights=PESOS_PLANOS[primeiro_plano:ultimo_plano],
     )[0]
-    # a empresa mantém o vendedor do primeiro negócio
-    vendedor = historico.vendedor if historico else rng.choice(vendedores)
+    # a empresa mantém o vendedor do primeiro negócio que passou de Lead
+    vendedor_empresa = historico.vendedor if historico else None
+    vendedor = vendedor_empresa or rng.choice(vendedores)
 
     fator_vendedor = 1.0
     if ano == 2026 and vendedor == vendedores[INDICE_VENDEDOR_EM_QUEDA]:
@@ -322,9 +327,14 @@ def simular_negocio(
     if indice_etapa >= ETAPAS.index("Proposta"):
         desconto = rng.choices(DESCONTOS, weights=PESOS_DESCONTOS)[0]
 
+    # a partir de Qualificado há sempre contato e reunião
+    foi_contatado = indice_etapa > 0 or rng.random() < prob_contato
+
     motivo_perda = None
     if status == "Perdido":
-        if indice_etapa == 0:
+        if not foi_contatado:
+            pesos_motivos = PESOS_MOTIVOS_SEM_CONTATO
+        elif indice_etapa == 0:
             pesos_motivos = PESOS_MOTIVOS_LEAD
         elif canal == "Evento":
             pesos_motivos = PESOS_MOTIVOS_EVENTO
@@ -340,10 +350,11 @@ def simular_negocio(
         valor_fechado = round(valor_estimado * (1 - desconto / 100), 2)
 
     qtd_reunioes = rng.randint(*REUNIOES_ETAPA[indice_etapa])
-    # a partir de Qualificado há sempre reunião; só fica sem contato quem parou em Lead
-    foi_contatado = qtd_reunioes > 0
     status_reuniao = "Sem reunião"
-    if foi_contatado:
+    if qtd_reunioes == 1:
+        # a única reunião é a que qualificou o negócio
+        status_reuniao = "Realizada"
+    elif qtd_reunioes > 1:
         status_reuniao = rng.choices(
             STATUS_REUNIAO, weights=PESOS_STATUS_REUNIAO[status]
         )[0]
@@ -363,7 +374,8 @@ def simular_negocio(
         "canal_origem": canal,
         "campanha_origem": rng.choice(campanhas),
         "sdr": rng.choice(sdrs),
-        "vendedor": vendedor,
+        # Lead de empresa sem vendedor aguarda o primeiro contato
+        "vendedor": vendedor if vendedor_empresa or indice_etapa > 0 else None,
         "etapa_atual": etapa_atual,
         "status": status,
         "valor_estimado": valor_estimado,
