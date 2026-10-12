@@ -21,7 +21,7 @@ def formatar_milhoes(valor: float) -> str:
 
 def destacar(texto: str, valor: float) -> str:
     cor = COR_DESTAQUE if valor >= 0 else COR_QUEDA
-    return f"<span style='font-size:16px;color:{cor}'>{texto}</span>"
+    return f"<span style='color:{cor}'>{texto}</span>"
 
 
 def salvar_html(figura: go.Figure, caminho: Path) -> None:
@@ -151,66 +151,108 @@ def indicadores_ytd(negocios: pl.DataFrame) -> pl.DataFrame:
 
 
 def grafico_indicadores_ytd(indicadores: pl.DataFrame, caminho: Path) -> None:
+    # Conversão e ticket sem eixo a partir de zero: a diferença entre os anos sumiria
     paineis = (
-        ("criados", "Negócios criados", {"tickformat": ",d"}, "%{y:,d}"),
-        ("conversao", "Conversão", {"tickformat": ".0%"}, "%{y:.1%}"),
+        (
+            "criados",
+            "volume",
+            "Negócios criados",
+            {"tickformat": ",d", "rangemode": "tozero"},
+            "%{y:,d}",
+        ),
+        ("conversao", "conversão", "Conversão", {"tickformat": ".0%"}, "%{y:.1%}"),
         (
             "ticket_mil",
+            "ticket",
             "Ticket médio",
             {"tickprefix": "R$ ", "ticksuffix": " mil", "tickformat": ".0f"},
             "R$ %{y:.1f} mil",
         ),
     )
+    final_2025, final_2026 = (
+        indicadores.filter(pl.col("mes") == ULTIMO_MES).sort("ano").rows(named=True)
+    )
+    # Variações relativas: receita = volume x conversão x ticket médio
+    var_receita = final_2026["receita"] / final_2025["receita"] - 1
+    variacoes = {
+        nome: final_2026[coluna] / final_2025[coluna] - 1
+        for coluna, nome, *_ in paineis
+    }
+
     figura = make_subplots(
         rows=3,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
-        subplot_titles=[f"{titulo} no acumulado do ano" for _, titulo, _, _ in paineis],
+        subplot_titles=[f"<b>{titulo}</b>" for _, _, titulo, *_ in paineis],
     )
-    figura.update_annotations(x=0, xanchor="left")
-    for linha, (coluna, titulo, eixo, formato) in enumerate(paineis, start=1):
+    # Títulos dos painéis afastados do topo do eixo Y
+    figura.update_annotations(x=0, xanchor="left", yshift=12, font_color=COR_SUBTITULO)
+    for linha, (coluna, nome, titulo, eixo, hover) in enumerate(paineis, start=1):
         for ano, cor in ((2025, COR_2025), (2026, COR_2026)):
             dados = indicadores.filter(pl.col("ano") == ano)
+            meses = [MESES[mes - 1] for mes in dados["mes"]]
             figura.add_scatter(
-                x=[MESES[mes - 1] for mes in dados["mes"]],
+                x=meses,
                 y=dados[coluna],
                 name=str(ano),
                 mode="lines+markers",
                 line={"color": cor, "width": 3},
                 hovertemplate=f"<b>{ano} · %{{x}}</b><br>{titulo} no acumulado: "
-                f"{formato}<extra></extra>",
+                f"{hover}<extra></extra>",
                 row=linha,
                 col=1,
             )
-        figura.update_yaxes(eixo, rangemode="tozero", row=linha, col=1)
+            # Rótulo do ano no fim da linha, no lugar da legenda
+            figura.add_annotation(
+                x=meses[-1],
+                y=dados[coluna][-1],
+                text=f"<b>{ano}</b>",
+                font={"color": cor},
+                showarrow=False,
+                xanchor="left",
+                xshift=10,
+                row=linha,
+                col=1,
+            )
+        # Variação em setembro: linha pontilhada entre os pontos de 2025 e 2026,
+        # com pontos intermediários para o hover funcionar ao longo de toda a linha
+        inicio, fim = final_2025[coluna], final_2026[coluna]
+        figura.add_scatter(
+            x=[MESES[-1]] * 11,
+            y=[inicio + (fim - inicio) * passo / 10 for passo in range(11)],
+            mode="lines",
+            line={"color": COR_SUBTITULO, "width": 1, "dash": "dot"},
+            hovertemplate=f"<b>{titulo}, 2026 x 2025: "
+            f"{destacar(f'{variacoes[nome]:+.0%}', variacoes[nome])}</b>"
+            "<extra></extra>",
+            row=linha,
+            col=1,
+        )
+        figura.update_yaxes(eixo, row=linha, col=1)
 
-    final = indicadores.filter(pl.col("mes") == ULTIMO_MES)
-    final_2025 = final.filter(pl.col("ano") == 2025).row(0, named=True)
-    final_2026 = final.filter(pl.col("ano") == 2026).row(0, named=True)
-    # Variações relativas: receita = volume x conversão x ticket médio
-    var_receita = final_2026["receita"] / final_2025["receita"] - 1
-    variacoes = {
-        "o volume": final_2026["criados"] / final_2025["criados"] - 1,
-        "a conversão": final_2026["conversao"] / final_2025["conversao"] - 1,
-        "o ticket médio": final_2026["ticket_mil"] / final_2025["ticket_mil"] - 1,
-    }
     alta = var_receita >= 0
-    # a métrica que mais puxa a receita no sentido da variação
-    principal = (max if alta else min)(variacoes, key=lambda nome: variacoes[nome])
-    volume, conversao, ticket = (
-        destacar(f"{valor:+.0%}", valor) for valor in variacoes.values()
-    )
-
+    # Métricas que puxam a receita no sentido da variação x as que compensam
+    puxam = [nome for nome, valor in variacoes.items() if (valor >= 0) == alta]
+    compensam = [nome for nome, valor in variacoes.items() if (valor >= 0) != alta]
     titulo = (
-        f"Receita YTD {var_receita:+.0%}: {principal} explica "
-        f"{'o crescimento' if alta else 'a queda'}"
+        f"Receita YTD {var_receita:+.0%}: {'alta' if alta else 'queda'} de "
+        f"{' e '.join(puxam)}"
     )
+    if compensam:
+        titulo += (
+            f" supera {'a queda' if alta else 'o ganho'} de {' e '.join(compensam)}"
+        )
+    # O que as variações significam, sem fórmula
+    volume, conversao, ticket = variacoes.values()
     subtitulo = (
-        f"Receita = volume ({volume}) × conversão ({conversao}) × "
-        f"ticket médio ({ticket}), <span style='color:{COR_2026}'>2026</span> x "
-        f"<span style='color:{COR_2025}'>2025</span> até setembro."
+        f"Geramos {destacar('mais' if volume >= 0 else 'menos', volume)} "
+        f"oportunidades, mas convertemos "
+        f"{destacar('mais' if conversao >= 0 else 'menos', conversao)} e vendemos "
+        f"{destacar('mais caro' if ticket >= 0 else 'mais barato', ticket)}."
     )
+    if volume >= 0 and not alta:
+        subtitulo += " O problema não é demanda, é venda."
 
     figura.update_layout(
         title={
@@ -228,7 +270,7 @@ def grafico_indicadores_ytd(indicadores: pl.DataFrame, caminho: Path) -> None:
         template="plotly_white",
         width=1100,
         height=850,
-        margin={"t": 120, "l": 80, "r": 40, "b": 40},
+        margin={"t": 120, "l": 80, "r": 70, "b": 40},
     )
     salvar_html(figura, caminho)
 
