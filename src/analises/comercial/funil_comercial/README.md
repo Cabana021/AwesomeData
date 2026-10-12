@@ -85,10 +85,9 @@ conclusão, calculada a partir dos dados.
 
 | # | Pergunta                            | Gráfico                                                |
 |---|-------------------------------------|--------------------------------------------------------|
-| 1 | Em qual etapa a conversão mudou?    | Conversão etapa a etapa, 2025 × 2026.                  |
-| 2 | Quais canais e vendedores mudaram?  | Conversão e receita por canal e por vendedor.          |
-| 3 | Por que perdemos?                   | Motivos de perda, 2025 × 2026.                         |
-| 4 | O que esperar do Q4?                | Pipeline aberto por etapa, bruto e ponderado.          |
+| 1 | Quais canais e vendedores mudaram?  | Conversão e receita por canal e por vendedor.          |
+| 2 | Por que perdemos?                   | Motivos de perda, 2025 × 2026.                         |
+| 3 | O que esperar do Q4?                | Pipeline aberto por etapa, bruto e ponderado.          |
 
 ## História esperada
 
