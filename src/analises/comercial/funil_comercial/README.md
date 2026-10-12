@@ -43,19 +43,25 @@ Regras dos dados:
 - **Vazios:** só onde não se aplicam: datas de etapas não atingidas, `desconto_percentual` antes de Proposta,
   `valor_fechado` fora dos ganhos, `motivo_perda` fora dos perdidos e `vendedor` no Lead de empresa sem vendedor ainda.
 - **Etapa:** `etapa_atual` é a última etapa atingida, inclusive nos fechados.
-- **Tipo de negócio:** Novo cria a empresa. Expansão vem de empresa com ganho há 30 dias ou mais, em plano acima do
-  ganho e no canal Base de clientes, então Enterprise e o maior plano do porte não recebem Expansão. Reativação vem de
-  empresa cujo último negócio foi perdido há 90 dias ou mais. Empresa com negócio em curso não recebe outro.
+- **Tipo de negócio:** Novo cria a empresa. Expansão vem de cliente cujo último negócio foi ganho há 30 dias ou mais,
+  em plano acima do ganho e no canal Base de clientes, então Enterprise e o maior plano do porte não recebem Expansão.
+  Reativação vem de empresa que nunca foi cliente e cujo último negócio foi perdido há 90 dias ou mais. Empresa com
+  negócio em curso não recebe outro.
 - **Empresa:** o porte Micro não contrata Enterprise. O nome-fantasia é único, com dois sobrenomes. ME e EI só aparecem
   em Varejo, Serviços e Logística, e S/A só no porte Média. O contato é fixo, com e-mail no domínio da empresa (nas
   Micro, parte usa provedor gratuito), celular com o DDD da `uf` e cargo que tende a Sócio nos portes menores.
-- **Valores:** `valor_estimado` e `valor_fechado` são o valor anual do contrato (primeiro ano), em reais.
+- **Valores:** `valor_estimado` e `valor_fechado` são o valor anual do contrato (primeiro ano), em reais, com 2 casas.
+  O `valor_estimado` vem de uma tabela de preços por plano e porte, sem sobreposição entre planos. O ticket maior da
+  Indicação vem do mix, com mais Pro e Enterprise.
+- **Ciclo:** os prazos entre etapas e até o fechamento crescem com o plano (Enterprise é o mais lento) e têm cauda longa.
+- **Abertos:** a maioria teve atividade nos últimos 30 dias. Cerca de 10% estão parados há mais de 30 dias.
 - **Vendedor:** entra a partir de Qualificado, e a empresa o mantém em todos os negócios seguintes.
 - **Contato e reunião:** o Lead não tem reunião (`qtd_reunioes` 0, status "Sem reunião"). De Qualificado em diante há
-  contato e ao menos uma reunião Realizada. A chance de contato do Lead varia por canal: alta em Indicação e Outbound,
-  baixa em Mídia paga e Evento.
+  contato e ao menos uma reunião Realizada. A quantidade de reuniões cresce com o plano e a etapa. A chance de contato
+  do Lead varia por canal: alta em Indicação e Outbound, baixa em Mídia paga e Evento.
 - **Motivo de perda:** Lead sem contato perde só por Fora do perfil. Lead contatado perde por Sem orçamento, Sem retorno
-  ou Timing. Preço e Concorrente só aparecem de Qualificado em diante.
+  ou Timing. Preço e Concorrente só aparecem de Qualificado em diante. A Expansão tem sempre contato e nunca perde por
+  Fora do perfil.
 
 ## Métricas
 

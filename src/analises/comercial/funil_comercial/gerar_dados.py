@@ -27,40 +27,74 @@ PROBABILIDADE_NEGOCIACAO_GANHO = 0.88
 PRAZOS_ETAPA = ((2, 8), (3, 10), (5, 14))
 PRAZO_GANHO = (5, 18)
 PRAZO_PERDA = (2, 10)
+# o prazo sorteado tem cauda longa até esse múltiplo do máximo
+CAUDA_PRAZO = 2
+# multiplicador de prazo por plano: Starter, Pro e Enterprise
+FATORES_PRAZO_PLANO = (1.0, 1.5, 2.5)
 
-# canal, fator de conversão em Proposta → Negociação, fator de ticket, probabilidade de
-# o Lead já ter sido contatado (de Qualificado em diante é sempre), campanhas
+# negócio criado nos últimos 90 dias que trava na última etapa e fica Aberto sem atividade
+JANELA_PARADOS = 90
+PROBABILIDADE_PARADO = 0.2
+# o parado precisa estar sem atividade há mais que o limite dos demais abertos
+DIAS_SEM_ATIVIDADE_ABERTO = 30
+DIAS_MINIMOS_PARADO = 45
+
+# canal, fator de conversão em Proposta → Negociação, probabilidade de o Lead já ter
+# sido contatado (de Qualificado em diante é sempre), pesos de plano, campanhas
 CANAIS = (
-    ("Indicação", 1.3, 1.3, 0.95, ("Programa de indicação",)),
-    ("Site", 0.95, 1.0, 0.75, ("Blog", "Newsletter", "Teste grátis")),
-    ("Mídia paga", 0.9, 1.0, 0.65, ("Google Ads", "LinkedIn Ads", "Meta Ads")),
-    ("Evento", 0.9, 0.9, 0.7, ("Feira Gestão PME", "Congresso de Varejo", "Webinar")),
-    ("Outbound", 0.9, 1.0, 0.95, ("Cadência outbound",)),
+    ("Indicação", 1.3, 0.95, (35, 40, 25), ("Programa de indicação",)),
+    ("Site", 0.95, 0.75, (55, 35, 10), ("Blog", "Newsletter", "Teste grátis")),
+    ("Mídia paga", 0.9, 0.65, (65, 30, 5), ("Google Ads", "LinkedIn Ads", "Meta Ads")),
+    (
+        "Evento",
+        0.9,
+        0.7,
+        (65, 30, 5),
+        ("Feira Gestão PME", "Congresso de Varejo", "Webinar"),
+    ),
+    ("Outbound", 0.9, 0.95, (40, 40, 20), ("Cadência outbound",)),
 )
 PESOS_CANAIS = {2025: (20, 25, 20, 10, 25), 2026: (18, 22, 18, 20, 22)}
-# Expansão vem da base de clientes e não entra no sorteio de canais
-CANAL_EXPANSAO = ("Base de clientes", 1.0, 1.0, 0.9, ("Upgrade de plano",))
-
-# plano, valor estimado mínimo e máximo
-PLANOS = (
-    ("Starter", 7_000, 11_000),
-    ("Pro", 22_000, 36_000),
-    ("Enterprise", 70_000, 110_000),
+# Expansão vem da base de clientes e não entra no sorteio de canais; o cliente é
+# sempre contatado
+CANAL_EXPANSAO = (
+    "Base de clientes",
+    1.0,
+    1.0,
+    (55, 35, 10),
+    ("Upgrade de plano",),
 )
-NOMES_PLANOS = tuple(nome for nome, _, _ in PLANOS)
-PESOS_PLANOS = (55, 35, 10)
-# porte Micro não contrata Enterprise
+
+NOMES_PLANOS = ("Starter", "Pro", "Enterprise")
+# valores anuais possíveis por plano e porte; Micro não contrata Enterprise
+PRECOS = {
+    "Starter": {
+        "Micro": (6_000, 7_000, 8_000),
+        "Pequena": (9_000, 10_000, 11_000),
+        "Média": (12_000, 13_000, 14_000),
+    },
+    "Pro": {
+        "Micro": (20_000, 23_000, 26_000),
+        "Pequena": (28_000, 31_000, 34_000),
+        "Média": (38_000, 42_000, 46_000),
+    },
+    "Enterprise": {
+        "Pequena": (70_000, 80_000, 90_000),
+        "Média": (100_000, 115_000, 130_000),
+    },
+}
 QTD_PLANOS_MICRO = 2
 
 TIPOS_NEGOCIO = ("Novo", "Expansão", "Reativação")
 PESOS_TIPOS_NEGOCIO = (60, 30, 10)
-# Reativação: empresa cujo último negócio foi perdido há pelo menos esse prazo
+# Reativação: empresa que nunca foi cliente e cujo último negócio foi perdido há pelo
+# menos esse prazo
 DIAS_REATIVACAO = 90
-# Expansão: empresa cujo último ganho ocorreu há pelo menos esse prazo
+# Expansão: empresa cujo último negócio foi ganho há pelo menos esse prazo
 DIAS_MINIMOS_EXPANSAO = 30
 
 SEGMENTOS = ("Varejo", "Indústria", "Serviços", "Saúde", "Educação", "Logística")
-FATOR_PORTE = {"Micro": 0.8, "Pequena": 1.0, "Média": 1.3}
+PORTES = ("Micro", "Pequena", "Média")
 PESOS_PORTES = (40, 40, 20)
 UFS = ("SP", "RJ", "MG", "PR", "RS", "SC", "BA", "GO")
 PESOS_UFS = (35, 14, 15, 11, 9, 8, 5, 3)
@@ -114,8 +148,13 @@ PESOS_MOTIVOS_LEAD = (0, 0, 15, 45, 0, 15)
 PESOS_MOTIVOS = {2025: (22, 25, 15, 18, 5, 15), 2026: (32, 25, 12, 14, 4, 13)}
 PESOS_MOTIVOS_EVENTO = (65, 10, 8, 7, 0, 10)
 
-# mínimo e máximo de reuniões por etapa atingida; o Lead não tem reunião
-REUNIOES_ETAPA = ((0, 0), (1, 2), (2, 4), (3, 5))
+# mínimo e máximo de reuniões por plano (Starter, Pro, Enterprise) e etapa atingida;
+# o Lead não tem reunião
+REUNIOES_PLANO_ETAPA = (
+    ((0, 0), (1, 1), (1, 2), (1, 3)),
+    ((0, 0), (1, 2), (2, 4), (3, 5)),
+    ((0, 0), (2, 3), (3, 5), (4, 7)),
+)
 STATUS_REUNIAO = ("Realizada", "Agendada", "Não compareceu")
 PESOS_STATUS_REUNIAO = {
     "Ganho": (100, 0, 0),
@@ -141,9 +180,8 @@ class Historico(NamedTuple):
     # do último negócio da empresa
     status: str
     fechamento: date | None
-    # índice em PLANOS e data do último ganho; -1 e None enquanto não há ganho
+    # índice em NOMES_PLANOS do último ganho; -1 enquanto a empresa não é cliente
     plano_ganho: int
-    data_ganho: date | None
 
 
 def nome_pessoa(fake: Faker) -> str:
@@ -179,7 +217,7 @@ def criar_empresa(
 ) -> Empresa:
     rng = fake.random
     segmento = rng.choice(SEGMENTOS)
-    porte = rng.choices(tuple(FATOR_PORTE), weights=PESOS_PORTES)[0]
+    porte = rng.choices(PORTES, weights=PESOS_PORTES)[0]
     # dois sobrenomes distintos, com nome-fantasia único, dão domínio único
     nome_fantasia = ""
     while not nome_fantasia or nome_fantasia in fantasias_usadas:
@@ -213,7 +251,7 @@ def criar_empresa(
 
 
 def qtd_planos(empresa: Empresa) -> int:
-    return QTD_PLANOS_MICRO if empresa.porte == "Micro" else len(PLANOS)
+    return QTD_PLANOS_MICRO if empresa.porte == "Micro" else len(NOMES_PLANOS)
 
 
 def empresas_elegiveis(
@@ -232,15 +270,18 @@ def empresas_elegiveis(
         if historico.fechamento is None or historico.fechamento >= dia:
             continue
         if tipo_negocio == "Expansão":
-            # só sobe de plano: Enterprise e o maior plano do porte não recebem Expansão
+            # só o cliente cujo último negócio foi ganho recebe Expansão, que sobe de
+            # plano: Enterprise e o maior plano do porte não recebem
             elegivel = (
-                historico.data_ganho is not None
-                and historico.data_ganho <= dia - timedelta(days=DIAS_MINIMOS_EXPANSAO)
+                historico.status == "Ganho"
+                and historico.fechamento <= dia - timedelta(days=DIAS_MINIMOS_EXPANSAO)
                 and historico.plano_ganho < qtd_planos(empresa) - 1
             )
         else:
+            # quem já foi cliente não é reativado
             elegivel = (
                 historico.status == "Perdido"
+                and historico.plano_ganho == -1
                 and historico.fechamento <= dia - timedelta(days=DIAS_REATIVACAO)
             )
         if elegivel:
@@ -252,6 +293,13 @@ def proximo_dia_util(dia: date) -> date:
     while dia.weekday() >= 5:
         dia += timedelta(days=1)
     return dia
+
+
+def sortear_prazo(rng: Random, prazo: tuple[int, int], fator: float) -> int:
+    """Prazo em dias, concentrado na primeira metade da faixa e com cauda longa."""
+    minimo, maximo = prazo
+    moda = (minimo + maximo) / 2
+    return round(rng.triangular(minimo, maximo * CAUDA_PRAZO, moda) * fator)
 
 
 def simular_negocio(
@@ -267,9 +315,9 @@ def simular_negocio(
     rng = fake.random
 
     if tipo_negocio == "Expansão":
-        canal, fator_conversao, fator_ticket, prob_contato, campanhas = CANAL_EXPANSAO
+        canal, fator_conversao, prob_contato, pesos_planos, campanhas = CANAL_EXPANSAO
     else:
-        canal, fator_conversao, fator_ticket, prob_contato, campanhas = rng.choices(
+        canal, fator_conversao, prob_contato, pesos_planos, campanhas = rng.choices(
             CANAIS, weights=PESOS_CANAIS[ano]
         )[0]
     # Expansão contrata plano acima do último ganho
@@ -277,10 +325,12 @@ def simular_negocio(
     if historico and tipo_negocio == "Expansão":
         primeiro_plano = historico.plano_ganho + 1
     ultimo_plano = qtd_planos(empresa)
-    plano, valor_minimo, valor_maximo = rng.choices(
-        PLANOS[primeiro_plano:ultimo_plano],
-        weights=PESOS_PLANOS[primeiro_plano:ultimo_plano],
+    indice_plano = rng.choices(
+        range(primeiro_plano, ultimo_plano),
+        weights=pesos_planos[primeiro_plano:ultimo_plano],
     )[0]
+    plano = NOMES_PLANOS[indice_plano]
+    fator_prazo = FATORES_PRAZO_PLANO[indice_plano]
     # a empresa mantém o vendedor do primeiro negócio que passou de Lead
     vendedor_empresa = historico.vendedor if historico else None
     vendedor = vendedor_empresa or rng.choice(vendedores)
@@ -304,18 +354,23 @@ def simular_negocio(
 
     entradas = [data_criacao]
     for prazo in PRAZOS_ETAPA[: min(etapa_final, len(ETAPAS) - 1)]:
-        entradas.append(
-            proximo_dia_util(entradas[-1] + timedelta(days=rng.randint(*prazo)))
-        )
+        dias = sortear_prazo(rng, prazo, fator_prazo)
+        entradas.append(proximo_dia_util(entradas[-1] + timedelta(days=dias)))
     prazo_fechamento = PRAZO_GANHO if ganho else PRAZO_PERDA
-    fechamento = proximo_dia_util(
-        entradas[-1] + timedelta(days=rng.randint(*prazo_fechamento))
-    )
+    dias = sortear_prazo(rng, prazo_fechamento, fator_prazo)
+    fechamento = proximo_dia_util(entradas[-1] + timedelta(days=dias))
 
     # o que não fechou até o corte segue aberto
     aberto = fechamento > DATA_CORTE
     if aberto:
         entradas = [entrada for entrada in entradas if entrada <= DATA_CORTE]
+    # o parado trava na última etapa e some do radar, mesmo que fosse fechar
+    parado = (
+        data_criacao >= DATA_CORTE - timedelta(days=JANELA_PARADOS)
+        and entradas[-1] <= DATA_CORTE - timedelta(days=DIAS_MINIMOS_PARADO)
+        and rng.random() < PROBABILIDADE_PARADO
+    )
+    aberto = aberto or parado
     indice_etapa = len(entradas) - 1
     etapa_atual = ETAPAS[indice_etapa]
     datas: list[date | None] = [*entradas, *[None] * (len(ETAPAS) - len(entradas))]
@@ -323,21 +378,23 @@ def simular_negocio(
     if aberto:
         status = "Aberto"
         data_fechamento = None
-        data_ultima_atividade = min(
-            DATA_CORTE,
-            proximo_dia_util(entradas[-1] + timedelta(days=rng.randint(0, 30))),
-        )
+        if parado:
+            ultima_atividade = entradas[-1] + timedelta(days=rng.randint(0, 10))
+        else:
+            # o aberto que não está parado teve atividade nos últimos 30 dias
+            inicio = max(
+                entradas[-1], DATA_CORTE - timedelta(days=DIAS_SEM_ATIVIDADE_ABERTO)
+            )
+            ultima_atividade = inicio + timedelta(
+                days=rng.randint(0, (DATA_CORTE - inicio).days)
+            )
+        data_ultima_atividade = min(DATA_CORTE, proximo_dia_util(ultima_atividade))
     else:
         status = "Ganho" if ganho else "Perdido"
         data_fechamento = fechamento
         data_ultima_atividade = fechamento
 
-    valor_estimado = round(
-        rng.uniform(valor_minimo, valor_maximo)
-        * FATOR_PORTE[empresa.porte]
-        * fator_ticket,
-        -2,
-    )
+    valor_estimado = float(rng.choice(PRECOS[plano][empresa.porte]))
     desconto = None
     if indice_etapa >= ETAPAS.index("Proposta"):
         desconto = rng.choices(DESCONTOS, weights=PESOS_DESCONTOS)[0]
@@ -355,7 +412,11 @@ def simular_negocio(
             pesos_motivos = PESOS_MOTIVOS_EVENTO
         else:
             pesos_motivos = PESOS_MOTIVOS[ano]
-        motivo_perda = rng.choices(MOTIVOS_PERDA, weights=pesos_motivos)[0]
+        pesos = list(pesos_motivos)
+        if tipo_negocio == "Expansão":
+            # o cliente já está no perfil
+            pesos[MOTIVOS_PERDA.index("Fora do perfil")] = 0
+        motivo_perda = rng.choices(MOTIVOS_PERDA, weights=pesos)[0]
         # quem some deixa de ter atividade logo após a última etapa
         if motivo_perda == "Sem retorno":
             data_ultima_atividade = entradas[-1]
@@ -364,7 +425,7 @@ def simular_negocio(
     if desconto is not None and status == "Ganho":
         valor_fechado = round(valor_estimado * (1 - desconto / 100), 2)
 
-    qtd_reunioes = rng.randint(*REUNIOES_ETAPA[indice_etapa])
+    qtd_reunioes = rng.randint(*REUNIOES_PLANO_ETAPA[indice_plano][indice_etapa])
     status_reuniao = "Sem reunião"
     if qtd_reunioes == 1:
         # a única reunião é a que qualificou o negócio
@@ -474,16 +535,13 @@ def gerar_dados() -> Path:
                     anterior,
                 )
                 plano_ganho = anterior.plano_ganho if anterior else -1
-                data_ganho = anterior.data_ganho if anterior else None
                 if negocio["status"] == "Ganho":
                     plano_ganho = NOMES_PLANOS.index(negocio["plano"])
-                    data_ganho = negocio["data_fechamento"]
                 historicos[empresa.nome] = Historico(
                     negocio["vendedor"],
                     negocio["status"],
                     negocio["data_fechamento"],
                     plano_ganho,
-                    data_ganho,
                 )
                 negocios.append({"id": gerar_id(rng_ids, ids_usados), **negocio})
 
@@ -492,7 +550,9 @@ def gerar_dados() -> Path:
     pasta_dados = Path(__file__).resolve().parent / "dados"
     pasta_dados.mkdir(exist_ok=True)
     caminho = pasta_dados / "negocios.csv"
-    pl.DataFrame(negocios, infer_schema_length=None).write_csv(caminho)
+    pl.DataFrame(negocios, infer_schema_length=None).write_csv(
+        caminho, float_precision=2
+    )
 
     logger.info("Base de negócios criada: {} ({} negócios)", caminho, len(negocios))
     return caminho
