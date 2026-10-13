@@ -87,7 +87,6 @@ conclusão, calculada a partir dos dados.
 |---|-------------------------------------|--------------------------------------------------------|
 | 1 | Quais canais e vendedores mudaram?  | Conversão e receita por canal e por vendedor.          |
 | 2 | Por que perdemos?                   | Motivos de perda, 2025 × 2026.                         |
-| 3 | O que esperar do Q4?                | Pipeline aberto por etapa, bruto e ponderado.          |
 
 ## História esperada
 
