@@ -14,7 +14,6 @@ from plotly.subplots import make_subplots
 
 
 def indicadores_ytd(negocios: pl.DataFrame) -> pl.DataFrame:
-    # Criados por data de criação; ganhos e receita por data de fechamento
     periodo = (pl.col("ano").is_in([2025, 2026]), pl.col("mes") <= ULTIMO_MES)
     criados = (
         negocios.with_columns(
@@ -23,7 +22,11 @@ def indicadores_ytd(negocios: pl.DataFrame) -> pl.DataFrame:
         )
         .filter(*periodo)
         .group_by("ano", "mes")
-        .agg(criados=pl.len())
+        .agg(
+            criados=pl.len(),
+            fechados=(pl.col("status") != "Aberto").sum(),
+            ganhos_criados=(pl.col("status") == "Ganho").sum(),
+        )
     )
     ganhos = (
         negocios.filter(pl.col("status") == "Ganho")
@@ -38,9 +41,13 @@ def indicadores_ytd(negocios: pl.DataFrame) -> pl.DataFrame:
     return (
         criados.join(ganhos, on=["ano", "mes"], how="left")
         .sort("ano", "mes")
-        .with_columns(pl.col("criados", "ganhos", "receita").cum_sum().over("ano"))
         .with_columns(
-            conversao=pl.col("ganhos") / pl.col("criados"),
+            pl.col("criados", "fechados", "ganhos_criados", "ganhos", "receita")
+            .cum_sum()
+            .over("ano")
+        )
+        .with_columns(
+            conversao=pl.col("ganhos_criados") / pl.col("fechados"),
             ticket_mil=pl.col("receita") / pl.col("ganhos") / 1e3,
         )
     )
@@ -68,7 +75,7 @@ def grafico_indicadores_ytd(indicadores: pl.DataFrame, caminho: Path) -> None:
     final_2025, final_2026 = (
         indicadores.filter(pl.col("mes") == ULTIMO_MES).sort("ano").rows(named=True)
     )
-    # Variações relativas: receita = volume x conversão x ticket médio
+    # Variações relativas de cada métrica e da receita
     var_receita = final_2026["receita"] / final_2025["receita"] - 1
     variacoes = {
         nome: final_2026[coluna] / final_2025[coluna] - 1
