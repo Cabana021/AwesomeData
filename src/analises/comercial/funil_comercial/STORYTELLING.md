@@ -1,5 +1,7 @@
 # Storytelling do Funil Comercial
 
+> Os dados utilizados foram gerados com Faker e NÃO são reais!
+
 ## Cenário
 
 Empresa B2B de software de gestão para PMEs. 
@@ -34,7 +36,8 @@ O desconto médio quase não mudou (7,5% para 7,8%). O ticket caiu porque os neg
 estimado médio caiu 11%.
 
 A conversão compara os negócios criados de janeiro a setembro, vistos em 30/09 de cada ano: 196 seguiam em aberto em
-2025 e 247 em 2026.
+2025 e 247 em 2026. Os demais negócios foram perdidos ainda no Lead (636 em 2025 e 813 em 2026) e ficam fora da
+análise de motivos, que olha as perdas após o lead.
 
 ## A conversão cai na proposta
 
