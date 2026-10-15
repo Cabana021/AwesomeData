@@ -17,6 +17,7 @@ dependencies = [
 
 [tool.mypy]
 explicit_package_bases = true
+mypy_path = "src/analises/comercial/funil_comercial"
 
 [[tool.mypy.overrides]]
 module = ["plotly", "plotly.*", "xlsxwriter", "xlsxwriter.*"]
