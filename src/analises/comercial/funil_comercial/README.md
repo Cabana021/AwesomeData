@@ -17,8 +17,8 @@ Na raiz do projeto:
 
 ```sh
 uv run python src/analises/comercial/funil_comercial/gerar_dados.py
-uv run python src/analises/comercial/funil_comercial/analisar.py
 uv run python src/analises/comercial/funil_comercial/gerar_grafico.py
 ```
 
-`analisar.py` lê `dados/negocios.csv` com Polars e salva as tabelas de cada pergunta em `saidas/`.
+`gerar_dados.py` simula os negócios (código em `simulacao/`) e salva `dados/negocios.csv`. `gerar_grafico.py` lê o CSV
+com Polars e salva um gráfico HTML por pergunta em `graficos/` (código em `geradores/`).
