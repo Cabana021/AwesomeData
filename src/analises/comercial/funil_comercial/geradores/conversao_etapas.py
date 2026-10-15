@@ -17,14 +17,18 @@ from geradores.common import (
 
 
 def etapas_atingidas(negocios: pl.DataFrame) -> pl.DataFrame:
-    # Corte de criação jan–set, só fechados: quantos negócios atingiram cada etapa
+    # Criados jan–set, só fechados até 30/09 do próprio ano: quantos atingiram cada etapa
     return (
         negocios.filter(pl.col("status") != "Aberto")
         .with_columns(
             ano=pl.col("data_criacao").dt.year(),
             mes=pl.col("data_criacao").dt.month(),
         )
-        .filter(pl.col("ano").is_in([2025, 2026]), pl.col("mes") <= ULTIMO_MES)
+        .filter(
+            pl.col("ano").is_in([2025, 2026]),
+            pl.col("mes") <= ULTIMO_MES,
+            pl.col("data_fechamento") <= pl.date(pl.col("ano"), 9, 30),
+        )
         .group_by("ano")
         .agg(
             Lead=pl.len(),

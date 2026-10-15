@@ -9,7 +9,9 @@
 Empresa B2B de software de gestão para PMEs. No fechamento de setembro de 2026, o diretor comercial compara o ano
 com 2025 e decide onde agir no Q4 e no planejamento de 2027.
 
-Etapas do funil: Lead → Qualificado → Proposta → Negociação → Ganho ou Perdido.
+## Storytelling
+
+A análise já foi concluída e você pode ler [aqui](STORYTELLING.md)
 
 ## Como executar
 

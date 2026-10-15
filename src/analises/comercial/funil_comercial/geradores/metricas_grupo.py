@@ -30,13 +30,16 @@ def metricas_por_grupo(negocios: pl.DataFrame, coluna: str) -> pl.DataFrame:
         negocios.with_columns(
             ano=pl.col("data_criacao").dt.year(),
             mes=pl.col("data_criacao").dt.month(),
+            # Fechado até 30/09 do próprio ano
+            fechado=pl.col("data_fechamento")
+            <= pl.date(pl.col("data_criacao").dt.year(), 9, 30),
         )
         .filter(*periodo)
         .group_by(coluna, "ano")
         .agg(
             criados=pl.len(),
-            conversao=(pl.col("status") == "Ganho").sum()
-            / (pl.col("status") != "Aberto").sum(),
+            conversao=((pl.col("status") == "Ganho") & pl.col("fechado")).sum()
+            / pl.col("fechado").sum(),
         )
     )
     ganhos = (

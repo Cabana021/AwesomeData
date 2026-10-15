@@ -20,7 +20,11 @@ def perdas_apos_lead(negocios: pl.DataFrame) -> pl.DataFrame:
             ano=pl.col("data_criacao").dt.year(),
             mes=pl.col("data_criacao").dt.month(),
         )
-        .filter(pl.col("ano").is_in([2025, 2026]), pl.col("mes") <= ULTIMO_MES)
+        .filter(
+            pl.col("ano").is_in([2025, 2026]),
+            pl.col("mes") <= ULTIMO_MES,
+            pl.col("data_fechamento") <= pl.date(pl.col("ano"), 9, 30),
+        )
     )
 
 

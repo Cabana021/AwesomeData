@@ -19,13 +19,16 @@ def indicadores_ytd(negocios: pl.DataFrame) -> pl.DataFrame:
         negocios.with_columns(
             ano=pl.col("data_criacao").dt.year(),
             mes=pl.col("data_criacao").dt.month(),
+            # Fechado até 30/09 do próprio ano
+            fechado=pl.col("data_fechamento")
+            <= pl.date(pl.col("data_criacao").dt.year(), 9, 30),
         )
         .filter(*periodo)
         .group_by("ano", "mes")
         .agg(
             criados=pl.len(),
-            fechados=(pl.col("status") != "Aberto").sum(),
-            ganhos_criados=(pl.col("status") == "Ganho").sum(),
+            fechados=pl.col("fechado").sum(),
+            ganhos_criados=((pl.col("status") == "Ganho") & pl.col("fechado")).sum(),
         )
     )
     ganhos = (
@@ -151,8 +154,8 @@ def grafico_indicadores_ytd(indicadores: pl.DataFrame, caminho: Path) -> None:
     subtitulo = (
         f"Geramos {destacar('mais' if volume >= 0 else 'menos', volume)} "
         f"oportunidades, mas convertemos "
-        f"{destacar('mais' if conversao >= 0 else 'menos', conversao)} e vendemos "
-        f"{destacar('mais caro' if ticket >= 0 else 'mais barato', ticket)}."
+        f"{destacar('mais' if conversao >= 0 else 'menos', conversao)} e cada venda "
+        f"vale {destacar('mais' if ticket >= 0 else 'menos', ticket)}."
     )
     if volume >= 0 and not alta:
         subtitulo += " O problema não é demanda, é venda."
