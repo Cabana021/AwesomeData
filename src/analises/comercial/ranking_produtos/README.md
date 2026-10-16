@@ -35,8 +35,8 @@ Planilhas de períodos anteriores em `dados/` não entram no resumo.
 | Arquivo                           | Análise                                                     |
 |-----------------------------------|-------------------------------------------------------------|
 | `volume_vendas.png`               | Evolução diária das unidades vendidas.                      |
-| `produtos_mais_vendidos.png`      | Ranking de produtos por unidades vendidas.                  |
-| `faturamento_meta_vendedores.png` | Faturamento líquido e meta de cada vendedor, em reais.      |
+| `produtos_mais_vendidos.png`      | Unidades e participação no faturamento por produto.         |
+| `faturamento_meta_vendedores.png` | % da meta atingido por vendedor.                            |
 | `faturamento_meta_produtos.png`   | Diferença entre faturamento líquido e meta por produto.     |
 
 Nos rótulos do gráfico de produtos, os valores em reais aparecem arredondados.
