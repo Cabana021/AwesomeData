@@ -124,24 +124,31 @@ def grafico_faturamento_meta_vendedores(
 
 
 def grafico_faturamento_meta_produtos(produtos: pl.DataFrame, caminho: Path) -> None:
-    produtos = produtos.sort("atingimento_meta", descending=True)
-    percentuais = [valor * 100 for valor in produtos["atingimento_meta"].to_list()]
-    rotulos = [f"{percentual:.1f}%" for percentual in percentuais]
-    cores = [
-        "#2A9D8F" if percentual >= 100 else "#D66A5E" for percentual in percentuais
+    produtos = produtos.sort("diferenca_meta")
+    diferencas = produtos["diferenca_meta"].to_list()
+    rotulos = [
+        f"{'+' if diferenca >= 0 else '-'}{formatar_reais(abs(diferenca))}"
+        for diferenca in diferencas
     ]
+    cores = ["#2A9D8F" if diferenca >= 0 else "#D66A5E" for diferenca in diferencas]
 
     figura, eixo = plt.subplots(figsize=(9, 5))
-    barras = eixo.barh(produtos["produto"].to_list(), percentuais, color=cores)
+    barras = eixo.barh(produtos["produto"].to_list(), diferencas, color=cores)
     eixo.invert_yaxis()
-    eixo.axvline(100, color="#555555", linestyle="--", alpha=0.5, label="Meta: 100%")
-    eixo.bar_label(barras, labels=rotulos, padding=5)
-    eixo.set_xlim(0, max(165, max(percentuais) * 1.45))
-    eixo.set(title="Faturamento x meta por produto", xlabel="Meta atingida (%)")
+    eixo.axvline(0, color="#555555", linewidth=1)
+    eixo.bar_label(barras, labels=rotulos, padding=4)
+    limite = max(abs(diferenca) for diferenca in diferencas) * 1.4
+    eixo.set_xlim(-limite, limite)
+    eixo.set_title(
+        "Mochila e garrafa concentram 94% da meta perdida", fontweight="bold"
+    )
+    eixo.set_xlabel("Diferença para a meta (R$)")
     eixo.spines["top"].set_visible(False)
     eixo.spines["right"].set_visible(False)
-    eixo.legend(loc="upper right")
-    eixo.grid(axis="x", alpha=0.25)
+    eixo.xaxis.set_major_formatter(
+        FuncFormatter(lambda valor, _: f"{valor:,.0f}".replace(",", "."))
+    )
+    eixo.grid(axis="x", alpha=0.12)
     eixo.set_axisbelow(True)
 
     figura.savefig(caminho, dpi=150, bbox_inches="tight")
