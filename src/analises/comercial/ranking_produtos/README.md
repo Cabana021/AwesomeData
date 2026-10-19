@@ -34,7 +34,7 @@ Planilhas de períodos anteriores em `dados/` não entram no resumo.
 
 | Arquivo                           | Análise                                                     |
 |-----------------------------------|-------------------------------------------------------------|
-| `volume_vendas.png`               | Evolução diária das unidades vendidas.                      |
+| `volume_vendas.png`               | Unidades vendidas por dia e média da semana.                |
 | `produtos_mais_vendidos.png`      | Unidades e participação no faturamento por produto.         |
 | `faturamento_meta_vendedores.png` | % da meta atingido por vendedor.                            |
 | `faturamento_meta_produtos.png`   | Diferença entre faturamento líquido e meta por produto.     |

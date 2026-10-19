@@ -22,31 +22,57 @@ def grafico_volume_vendas(vendas: pl.DataFrame, caminho: Path, periodo: str) -> 
         .agg(pl.col("quantidade_vendida").sum())
         .sort("data_venda")
     )
-    datas = [data.strftime("%d/%m") for data in volume["data_venda"].to_list()]
+    # Nomes fixos em pt-BR: strftime("%a") depende do locale da máquina
+    dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    datas = [
+        f"{dias_semana[data.weekday()]}\n{data:%d/%m}"
+        for data in volume["data_venda"].to_list()
+    ]
     quantidades = volume["quantidade_vendida"].to_list()
+    media = sum(quantidades) / len(quantidades)
 
-    figura, eixo = plt.subplots(figsize=(9, 4))
-    eixo.plot(datas, quantidades, color="#2563A6", marker="o", linewidth=2)
-    eixo.set(title="Volume diário de vendas", ylabel="Vendas realizadas")
-    eixo.margins(y=0.2)
-    eixo.spines["top"].set_visible(False)
-    eixo.spines["right"].set_visible(False)
-
-    # Gambiarra manual para organizar o posicionamento dos valores
-    deslocamentos = {
-        "21/09": (0, -14),
-        "22/09": (0, 14),
-        "23/09": (12, 8),
-        "24/09": (0, -14),
-    }
-    for data, quantidade in zip(datas, quantidades, strict=True):
-        eixo.annotate(
-            str(quantidade),
-            (data, quantidade),
-            xytext=deslocamentos.get(data, (0, 8)),
-            textcoords="offset points",
-            ha="center",
-        )
+    figura, eixo = plt.subplots(figsize=(9, 3))
+    barras = eixo.bar(datas, quantidades, color="#B8B8B8", width=0.6)
+    # Fundo branco no rótulo para não cruzar com a linha da média
+    eixo.bar_label(
+        barras,
+        padding=4,
+        color="#333333",
+        fontweight="bold",
+        bbox={"facecolor": "white", "edgecolor": "none", "pad": 1},
+    )
+    # Atrás das barras, a média aparece só nos vãos
+    eixo.axhline(media, color="#777777", linewidth=1, linestyle="--", zorder=0)
+    eixo.annotate(
+        f"Média {media:.0f}",
+        (1, media),
+        xycoords=("axes fraction", "data"),
+        xytext=(4, 0),
+        textcoords="offset points",
+        va="center",
+        color="#777777",
+        fontweight="bold",
+    )
+    eixo.set_ylim(0, max(quantidades) * 1.1)
+    eixo.yaxis.set_visible(False)
+    eixo.tick_params(length=0)
+    for lado in ("top", "right", "bottom", "left"):
+        eixo.spines[lado].set_visible(False)
+    # Título e subtítulo centralizados nas barras, não na figura com o rótulo da média
+    eixo.set_title(
+        "Volume estável: o resultado depende do que se vende, não de quanto",
+        fontweight="bold",
+        pad=26,
+    )
+    eixo.annotate(
+        periodo,
+        (0.5, 1),
+        xycoords="axes fraction",
+        xytext=(0, 10),
+        textcoords="offset points",
+        ha="center",
+        color="#777777",
+    )
 
     figura.savefig(caminho, dpi=150, bbox_inches="tight")
     plt.close(figura)
